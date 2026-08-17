@@ -153,25 +153,6 @@ export async function submitPaymentOutcome(pgRef, outcome, reason = "") {
   }
 }
 
-// ----------------------------------------------------------------
-// VERIFY PAYMENT  →  POST /api/payment/verify/{pgRef}
-// Triggers SHPVER internally and returns match result.
-// NOTE: This function is OUTSIDE submitPaymentOutcome — standalone export.
-// ----------------------------------------------------------------
-export async function verifyPayment(pgRef) {
-  console.log("[paymentApi] verifyPayment called for pgRef=", pgRef);
-
-  const response = await apiFetch(`/api/payment/verify/${encodeURIComponent(pgRef)}`, {
-    method: "POST",
-  });
-
-  console.log("[paymentApi] verifyPayment response:", response);
-
-  if (response) {
-    saveStoredCurrentTransaction(response);
-    const list = getStoredTransactions();
-    saveStoredTransactions(list.map((item) => (item.pgRef === pgRef ? response : item)));
-  }
-
-  return response;
-}
+// verifyPayment removed — verification is now triggered automatically
+// by the backend inside PaymentService.processPayOutcome().
+// Check the Spring Boot console for ✅ / ❌ SHPVER logs after each payment.

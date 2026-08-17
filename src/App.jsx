@@ -11,7 +11,7 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { createPaymentRequest, getPaymentRequest, getStoredCurrentTransaction, saveStoredCurrentTransaction, submitPaymentOutcome, verifyPayment } from "./api/paymentApi";
+import { createPaymentRequest, getPaymentRequest, getStoredCurrentTransaction, saveStoredCurrentTransaction, submitPaymentOutcome } from "./api/paymentApi";
 import { getStoredTransactionByPgRef, getTransaction, getTransactions } from "./api/transactionApi";
 import { DEFAULT_SETTINGS, getSettings, updateSettings } from "./api/settingsApi";
 import { formatCurrency } from "./utils/formatAmount";
@@ -497,9 +497,7 @@ function BankPaymentPage({ transaction, onSubmit }) {
 }
 
 function PaymentResultPage({ transactionLookup, onRefresh }) {
-  const [verifying, setVerifying]       = useState(false);
-  const [verifyResult, setVerifyResult] = useState(null);
-  const [verifyError, setVerifyError]   = useState("");
+  // Verification is handled automatically by backend — no UI state needed
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const pgRef = searchParams.get("pgRef");
@@ -572,20 +570,7 @@ function PaymentResultPage({ transactionLookup, onRefresh }) {
     return () => clearInterval(interval);
   }, [pgRef, transaction?.status, onRefresh]);
 
-  const handleVerify = async () => {
-    setVerifying(true);
-    setVerifyError("");
-    setVerifyResult(null);
-    try {
-      const result = await verifyPayment(transaction.pgRef);
-      setVerifyResult(result);
-      setTransaction(result);
-    } catch (err) {
-      setVerifyError(err.message || "Verification failed.");
-    } finally {
-      setVerifying(false);
-    }
-  };
+
 
   if (loading)      return <LoadingState message="Loading payment result..." />;
   if (error)        return <ErrorState title="Transaction Not Found" message={error} actionText="Back to Transactions" onAction={() => navigate("/transactions")} />;
@@ -624,40 +609,8 @@ function PaymentResultPage({ transactionLookup, onRefresh }) {
           {status === "FAILURE" && transaction.reason   && <DetailRow label="Reason" value={transaction.reason} />}
         </div>
 
-        {/* Verify button — only visible after payment is done (not while PENDING) */}
-        {status !== "PENDING" && (
-          <div style={{ marginTop: "16px" }}>
-            <button
-              type="button"
-              className="btn-secondary full-width"
-              onClick={handleVerify}
-              disabled={verifying}
-            >
-              {verifying ? "Verifying..." : "🔍 Verify Payment (SHPVER)"}
-            </button>
-
-            {verifyResult && (
-              <div style={{
-                marginTop: "12px",
-                padding: "12px",
-                borderRadius: "6px",
-                background: verifyResult.verificationStatusMatchesPayment ? "#F0FDF4" : "#FEF2F2",
-                border: verifyResult.verificationStatusMatchesPayment ? "1px solid #86EFAC" : "1px solid #FECACA",
-              }}>
-                <p style={{ margin: 0, fontWeight: 600, color: verifyResult.verificationStatusMatchesPayment ? "#166534" : "#991B1B" }}>
-                  {verifyResult.statusMatchMessage}
-                </p>
-                <p style={{ margin: "6px 0 0", fontSize: "12px", color: "#6B7280" }}>
-                  Payment status: {verifyResult.status} &nbsp;|&nbsp; Verification status: {verifyResult.verificationStatus}
-                </p>
-              </div>
-            )}
-
-            {verifyError && (
-              <p style={{ color: "#DC2626", marginTop: "8px", fontSize: "13px" }}>{verifyError}</p>
-            )}
-          </div>
-        )}
+        {/* Verification is done automatically by the backend after every payment.
+             No manual verify button needed — check the Spring Boot console for ✅/❌ logs. */}
 
         <div className="cta-row">
           <button type="button" className="btn-secondary" onClick={() => navigate("/payment")}>
